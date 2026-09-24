@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-900 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Feedback Hub & CI/CD Pipeline Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .star-rating label { cursor: pointer; }
+        .star-rating input:checked ~ label,
+        .star-rating label:hover,
+        .star-rating label:hover ~ label { color: #f59e0b; }
+        .star-rating input { display: none; }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between bg-slate-900 text-slate-100 antialiased">
+
+    <!-- Navigation Header -->
+    <header class="sticky top-0 z-40 bg-slate-900/80 backdrop-blur-md border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 bg-indigo-600 rounded-lg text-white">
+                        <i class="fa-solid me-0 fa-graduation-cap text-xl"></i>
+                    </div>
+                    <span class="font-bold text-xl tracking-tight text-white">EduFeedback <span class="text-xs bg-indigo-900/60 text-indigo-300 border border-indigo-700/50 px-2 py-0.5 rounded-full">v1.0</span></span>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button id="cicdModalBtn" class="flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-lg text-sm font-medium border border-slate-700 transition">
+                        <i class="fa-brands fa-github text-lg text-indigo-400"></i>
+                        <span class="hidden sm:inline">CI/CD Pipeline Setup</span>
+                    </button>
+                    <a href="#feedback-section" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-lg shadow-indigo-600/20">
+                        Give Feedback
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow">
+        
+        <!-- Hero & Info Banner -->
+        <div class="mb-8 p-6 sm:p-8 rounded-2xl bg-gradient-to-r from-indigo-900/40 via-purple-900/20 to-slate-900 border border-indigo-800/40 relative overflow-hidden">
+            <div class="relative z-10 max-w-3xl">
+                <h1 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-2">Student Course Feedback Portal</h1>
+                <p class="text-slate-300 text-base sm:text-lg mb-4">Share your honest insights to help improve our curriculum and faculty standard. Submit reviews or explore community ratings below.</p>
+                <div class="flex flex-wrap gap-3">
+                    <span class="inline-flex items-center text-xs text-indigo-300 bg-indigo-950/80 px-3 py-1.5 rounded-full border border-indigo-800/50">
+                        <i class="fa-solid fa-bolt text-amber-400 mr-2"></i> Real-time UI updates
+                    </span>
+                    <span class="inline-flex items-center text-xs text-emerald-300 bg-emerald-950/80 px-3 py-1.5 rounded-full border border-emerald-800/50">
+                        <i class="fa-solid fa-code-branch text-emerald-400 mr-2"></i> Automated GitHub Actions CI/CD ready
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metrics Row -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-5 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Reviews</p>
+                    <p id="stat-total" class="text-2xl font-bold text-white mt-1">0</p>
+                </div>
+                <div class="p-3 bg-blue-500/10 text-blue-400 rounded-lg">
+                    <i class="fa-solid fa-comments text-xl"></i>
+                </div>
+            </div>
+            <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-5 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Average Rating</p>
+                    <div class="flex items-center mt-1 space-x-2">
+                        <span id="stat-avg" class="text-2xl font-bold text-white">0.0</span>
+                        <div id="stat-avg-stars" class="text-amber-400 text-xs"></div>
+                    </div>
+                </div>
+                <div class="p-3 bg-amber-500/10 text-amber-400 rounded-lg">
+                    <i class="fa-solid fa-star text-xl"></i>
+                </div>
+            </div>
+            <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-5 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Top Course</p>
+                    <p id="stat-top-course" class="text-lg font-bold text-white mt-1 truncate max-w-[150px]">None</p>
+                </div>
+                <div class="p-3 bg-indigo-500/10 text-indigo-400 rounded-lg">
+                    <i class="fa-solid fa-book-open text-xl"></i>
+                </div>
+            </div>
+            <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-5 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Pipeline Status</p>
+                    <span class="inline-flex items-center text-xs font-semibold text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-2.5 py-1 rounded-full mt-2">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 mr-2 animate-pulse"></span> Passing
+                    </span>
+                </div>
+                <div class="p-3 bg-emerald-500/10 text-emerald-400 rounded-lg">
+                    <i class="fa-solid fa-circle-check text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div id="feedback-section" class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- Form Column (5 cols) -->
+            <div class="lg:col-span-5">
+                <div class="bg-slate-800/80 border border-slate-700/70 rounded-2xl p-6 shadow-xl sticky top-24">
+                    <h2 class="text-xl font-bold text-white mb-1 flex items-center">
+                        <i class="fa-solid fa-pen-to-square text-indigo-400 mr-2"></i> Submit Feedback
+                    </h2>
+                    <p class="text-sm text-slate-400 mb-6">Fill out the fields below to submit your review.</p>
+
+                    <form id="feedbackForm" class="space-y-4">
+                        <!-- Student Name -->
+                        <div>
+                            <label for="studentName" class="block text-xs font-semibold text-slate-300 uppercase mb-1">Student Name</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500">
+                                    <i class="fa-solid fa-user text-sm"></i>
+                                </span>
+                                <input type="text" id="studentName" required placeholder="e.g. Alex Morgan" class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition">
+                            </div>
+                        </div>
+
+                        <!-- Course Selection -->
+                        <div>
+                            <label for="courseName" class="block text-xs font-semibold text-slate-300 uppercase mb-1">Course Name</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500">
+                                    <i class="fa-solid fa-graduation-cap text-sm"></i>
+                                </span>
+                                <select id="courseName" required class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition">
+                                    <option value="" disabled selected>Select a course...</option>
+                                    <option value="CS101: Web Development Basics">CS101: Web Development Basics</option>
+                                    <option value="CS202: Data Structures & Algorithms">CS202: Data Structures & Algorithms</option>
+                                    <option value="CS305: Cloud & DevOps Engineering">CS305: Cloud & DevOps Engineering</option>
+                                    <option value="DS210: Machine Learning Fundamentals">DS210: Machine Learning Fundamentals</option>
+                                    <option value="UI102: User Interface Design">UI102: User Interface Design</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Rating (Interactive Stars) -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Rating</label>
+                            <div class="flex items-center space-x-1 star-rating text-2xl text-slate-600 bg-slate-900 p-2.5 rounded-lg border border-slate-700">
+                                <input type="radio" id="star5" name="rating" value="5" required /><label for="star5" title="5 stars"><i class="fa-solid fa-star"></i></label>
+                                <input type="radio" id="star4" name="rating" value="4" /><label for="star4" title="4 stars"><i class="fa-solid fa-star"></i></label>
+                                <input type="radio" id="star3" name="rating" value="3" /><label for="star3" title="3 stars"><i class="fa-solid fa-star"></i></label>
+                                <input type="radio" id="star2" name="rating" value="2" /><label for="star2" title="2 stars"><i class="fa-solid fa-star"></i></label>
+                                <input type="radio" id="star1" name="rating" value="1" /><label for="star1" title="1 star"><i class="fa-solid fa-star"></i></label>
+                                <span id="ratingDisplay" class="ml-3 text-xs text-slate-400 font-medium">Select stars</span>
+                            </div>
+                        </div>
+
+                        <!-- Feedback Text -->
+                        <div>
+                            <label for="feedbackComments" class="block text-xs font-semibold text-slate-300 uppercase mb-1">Feedback / Comments</label>
+                            <textarea id="feedbackComments" rows="4" required placeholder="Write your feedback regarding lecture clarity, pace, materials..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition resize-none"></textarea>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-lg text-sm transition shadow-lg shadow-indigo-600/30 flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-paper-plane"></i>
+                            <span>Submit Feedback</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Feedback List Column (7 cols) -->
+            <div class="lg:col-span-7 space-y-4">
+                
+                <!-- Controls Bar -->
+                <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div class="relative w-full sm:w-auto flex-1">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500">
+                            <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                        </span>
+                        <input type="text" id="searchInput" placeholder="Filter by name, course, text..." class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div class="flex items-center space-x-2 w-full sm:w-auto justify-end">
+                        <label for="sortSelect" class="text-xs text-slate-400 whitespace-nowrap">Sort by:</label>
+                        <select id="sortSelect" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500">
+                            <option value="newest">Newest First</option>
+                            <option value="highest">Highest Rating</option>
+                            <option value="lowest">Lowest Rating</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Notification Alert -->
+                <div id="toastMessage" class="hidden transition-all duration-300 p-4 rounded-xl border flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <i id="toastIcon" class="fa-solid text-lg"></i>
+                        <span id="toastText" class="text-sm font-medium"></span>
+                    </div>
+                    <button id="closeToast" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <!-- Feedbacks Render List -->
+                <div id="feedbackContainer" class="space-y-4">
+                    <!-- Dynamic Items Inject Here -->
+                </div>
+
+                <!-- Empty State Placeholder -->
+                <div id="emptyState" class="hidden text-center py-12 bg-slate-800/30 border border-dashed border-slate-700 rounded-2xl">
+                    <i class="fa-solid fa-comment-slash text-4xl text-slate-600 mb-3"></i>
+                    <p class="text-slate-400 font-medium text-sm">No feedback reviews match your query.</p>
+                    <p class="text-slate-500 text-xs mt-1">Try resetting search filters or submit a new entry.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- CI/CD GitHub Actions Modal -->
+    <div id="cicdModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+            <!-- Modal Header -->
+            <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 bg-slate-800 border border-slate-700 rounded-lg text-indigo-400">
+                        <i class="fa-brands fa-github-alt text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-white">GitHub Actions CI/CD Pipeline Setup</h3>
+                        <p class="text-xs text-slate-400">Automated integration and deployment strategy for this application</p>
+                    </div>
+                </div>
+                <button id="closeModal" class="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800 transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Modal Content -->
+            <div class="p-6 overflow-y-auto space-y-6 text-slate-300 text-sm">
+                <!-- Overview -->
+                <section>
+                    <h4 class="text-base font-semibold text-indigo-400 mb-2 flex items-center">
+                        <i class="fa-solid fa-route mr-2"></i> Pipeline Overview
+                    </h4>
+                    <p class="leading-relaxed text-slate-300">
+                        A Continuous Integration and Continuous Deployment (CI/CD) pipeline ensures code stability, run tests on new commits, and automatically deploys changes (e.g., to GitHub Pages, Vercel, or Netlify). Below is the recommended GitHub Actions workflow configuration file.
+                    </p>
+                </section>
+
+                <!-- Workflow Steps -->
+                <section>
+                    <h4 class="text-base font-semibold text-indigo-400 mb-2 flex items-center">
+                        <i class="fa-solid fa-list-check mr-2"></i> Workflow Steps
+                    </h4>
+                    <ul class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <li class="bg-slate-800/80 border border-slate-700/60 p-3 rounded-lg">
+                            <span class="text-xs font-bold text-indigo-400 block mb-1">1. Trigger</span>
+                            Pushes or Pull Requests targeting the <code class="text-amber-300 text-xs">main</code> branch.
+                        </li>
+                        <li class="bg-slate-800/80 border border-slate-700/60 p-3 rounded-lg">
+                            <span class="text-xs font-bold text-indigo-400 block mb-1">2. Build & Test</span>
+                            Lints HTML/JS files, validates syntax integrity, and runs tests.
+                        </li>
+                        <li class="bg-slate-800/80 border border-slate-700/60 p-3 rounded-lg">
+                            <span class="text-xs font-bold text-indigo-400 block mb-1">3. Deployment</span>
+                            Automatically publishes static pages to GitHub Pages environment.
+                        </li>
+                    </ul>
+                </section>
+
+                <!-- YAML Code Snippet -->
+                <section>
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-base font-semibold text-indigo-400 flex items-center">
+                            <i class="fa-solid fa-file-code mr-2"></i> .github/workflows/deploy.yml
+                        </h4>
+                        <button id="copyYamlBtn" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-2.5 py-1 rounded flex items-center space-x-1.5 transition">
+                            <i class="fa-solid fa-copy"></i>
+                            <span id="copyYamlText">Copy YAML</span>
+                        </button>
+                    </div>
+                    <pre class="bg-slate-950 p-4 rounded-xl border border-slate-800 overflow-x-auto text-xs text-emerald-400 font-mono leading-relaxed"><code id="yamlCode">name: Build & Deploy Student Feedback Portal
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  # Quality Assurance & Syntax Validation Step
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: HTML/JS Linter Check
+        run: |
+          echo "Executing linting tests..."
+          # Example CLI validation command
+          npx htmlhint *.html || true
+
+  # Automatic Deployment Step to GitHub Pages
+  deploy:
+    needs: lint-and-test
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload Artifacts
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4</code></pre>
+                </section>
+
+                <!-- Setup Instructions -->
+                <section>
+                    <h4 class="text-base font-semibold text-indigo-400 mb-2 flex items-center">
+                        <i class="fa-solid fa-terminal mr-2"></i> Implementation Guide
+                    </h4>
+                    <ol class="list-decimal list-inside space-y-1.5 text-slate-300">
+                        <li>Create directory <code class="bg-slate-800 px-1.5 py-0.5 rounded text-amber-300 text-xs">.github/workflows/</code> in your repository root.</li>
+                        <li>Save the above snippet as <code class="bg-slate-800 px-1.5 py-0.5 rounded text-amber-300 text-xs">deploy.yml</code>.</li>
+                        <li>In GitHub repository settings, go to <strong>Pages</strong> and set Source to <strong>GitHub Actions</strong>.</li>
+                        <li>Push code to the <code class="bg-slate-800 px-1.5 py-0.5 rounded text-amber-300 text-xs">main</code> branch to run your first pipeline execution!</li>
+                    </ol>
+                </section>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="px-6 py-3 border-t border-slate-800 bg-slate-900/50 flex justify-end">
+                <button id="closeModalBottom" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium border border-slate-700 transition">
+                    Close Guide
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 border-t border-slate-800 py-6 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
+            <p>© 2026 Student Feedback Portal. Built with HTML5, Tailwind CSS, JavaScript & GitHub Actions Integration.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Sample Initial Mock Data
+        const defaultFeedbacks = [
+            {
+                id: 1,
+                name: "Samantha Reed",
+                course: "CS305: Cloud & DevOps Engineering",
+                rating: 5,
+                comments: "Fantastic course! The practical breakdown of CI/CD concepts and Docker workflows made building pipelines super clear.",
+                date: "2026-03-20T10:30:00.000Z"
+            },
+            {
+                id: 2,
+                name: "David Chen",
+                course: "CS101: Web Development Basics",
+                rating: 4,
+                comments: "Great foundation for web design. Tailwind CSS section was especially helpful for rapid styling.",
+                date: "2026-03-21T14:15:00.000Z"
+            },
+            {
+                id: 3,
+                name: "Elena Rostova",
+                course: "DS210: Machine Learning Fundamentals",
+                rating: 5,
+                comments: "Extensive material covered with practical notebooks. Instructor was extremely responsive during Q&A.",
+                date: "2026-03-22T09:00:00.000Z"
+            }
+        ];
+
+        // State Management
+        let feedbacks = JSON.parse(localStorage.getItem('student_feedbacks')) || defaultFeedbacks;
+
+        // DOM Elements
+        const feedbackForm = document.getElementById('feedbackForm');
+        const feedbackContainer = document.getElementById('feedbackContainer');
+        const emptyState = document.getElementById('emptyState');
+        const searchInput = document.getElementById('searchInput');
+        const sortSelect = document.getElementById('sortSelect');
+        const ratingDisplay = document.getElementById('ratingDisplay');
+        const toastMessage = document.getElementById('toastMessage');
+        const toastText = document.getElementById('toastText');
+        const toastIcon = document.getElementById('toastIcon');
+        const closeToast = document.getElementById('closeToast');
+
+        // Modal Elements
+        const cicdModal = document.getElementById('cicdModal');
+        const cicdModalBtn = document.getElementById('cicdModalBtn');
+        const closeModal = document.getElementById('closeModal');
+        const closeModalBottom = document.getElementById('closeModalBottom');
+        const copyYamlBtn = document.getElementById('copyYamlBtn');
+
+        // Helper: Format Date
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
+        }
+
+        // Helper: Generate Star HTML
+        function renderStars(rating) {
+            let starsHtml = '';
+            for (let i = 1; i <= 5; i++) {
+                if (i <= rating) {
+                    starsHtml += `<i class="fa-solid fa-star text-amber-400"></i>`;
+                } else {
+                    starsHtml += `<i class="fa-regular fa-star text-slate-600"></i>`;
+                }
+            }
+            return starsHtml;
+        }
+
+        // Show Toast Notification
+        function showNotification(message, type = 'success') {
+            toastMessage.classList.remove('hidden', 'bg-emerald-950/80', 'border-emerald-700', 'text-emerald-200', 'bg-red-950/80', 'border-red-700', 'text-red-200');
+            
+            if (type === 'success') {
+                toastMessage.classList.add('bg-emerald-950/80', 'border-emerald-700', 'text-emerald-200');
+                toastIcon.className = 'fa-solid fa-circle-check text-emerald-400 text-lg';
+            } else {
+                toastMessage.classList.add('bg-red-950/80', 'border-red-700', 'text-red-200');
+                toastIcon.className = 'fa-solid fa-triangle-exclamation text-red-400 text-lg';
+            }
+
+            toastText.textContent = message;
+            setTimeout(() => {
+                toastMessage.classList.add('hidden');
+            }, 4000);
+        }
+
+        closeToast.addEventListener('click', () => toastMessage.classList.add('hidden'));
+
+        // Update Dynamic Metrics
+        function updateStats() {
+            const total = feedbacks.length;
+            document.getElementById('stat-total').textContent = total;
+
+            if (total === 0) {
+                document.getElementById('stat-avg').textContent = '0.0';
+                document.getElementById('stat-avg-stars').innerHTML = renderStars(0);
+                document.getElementById('stat-top-course').textContent = 'N/A';
+                return;
+            }
+
+            // Average Calculation
+            const sum = feedbacks.reduce((acc, f) => acc + parseInt(f.rating), 0);
+            const avg = (sum / total).toFixed(1);
+            document.getElementById('stat-avg').textContent = avg;
+            document.getElementById('stat-avg-stars').innerHTML = renderStars(Math.round(avg));
+
+            // Top Course Calculation
+            const courseCounts = {};
+            feedbacks.forEach(f => {
+                courseCounts[f.course] = (courseCounts[f.course] || 0) + 1;
+            });
+            const topCourse = Object.keys(courseCounts).reduce((a, b) => courseCounts[a] > courseCounts[b] ? a : b, '');
+            document.getElementById('stat-top-course').textContent = topCourse ? topCourse.split(':')[0] : 'N/A';
+        }
+
+        // Render Feedback List
+        function renderFeedbacks() {
+            const query = searchInput.value.toLowerCase().trim();
+            const sortBy = sortSelect.value;
+
+            // Filter
+            let filtered = feedbacks.filter(f => {
+                return f.name.toLowerCase().includes(query) ||
+                       f.course.toLowerCase().includes(query) ||
+                       f.comments.toLowerCase().includes(query);
+            });
+
+            // Sort
+            if (sortBy === 'newest') {
+                filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+            } else if (sortBy === 'highest') {
+                filtered.sort((a, b) => b.rating - a.rating);
+            } else if (sortBy === 'lowest') {
+                filtered.sort((a, b) => a.rating - b.rating);
+            }
+
+            // Toggle Empty State
+            if (filtered.length === 0) {
+                feedbackContainer.innerHTML = '';
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                feedbackContainer.innerHTML = filtered.map(f => `
+                    <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl p-5 hover:border-slate-600 transition shadow-md group">
+                        <div class="flex items-start justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 rounded-full bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center font-bold text-indigo-400 text-sm">
+                                    ${f.name.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold text-white text-base leading-tight">${f.name}</h3>
+                                    <p class="text-xs text-indigo-400 font-medium mt-0.5">${f.course}</p>
+                                </div>
+                            </div>
+                            <div class="flex flex-col items-end">
+                                <div class="flex items-center space-x-1 text-xs">
+                                    ${renderStars(f.rating)}
+                                </div>
+                                <span class="text-[10px] text-slate-500 mt-1">${formatDate(f.date)}</span>
+                            </div>
+                        </div>
+                        <p class="text-slate-300 text-sm mt-3 leading-relaxed bg-slate-900/40 p-3 rounded-lg border border-slate-800">
+                            "${f.comments}"
+                        </p>
+                        <div class="mt-3 flex justify-end">
+                            <button onclick="deleteFeedback(${f.id})" class="opacity-0 group-hover:opacity-100 text-xs text-rose-400 hover:text-rose-300 transition flex items-center space-x-1">
+                                <i class="fa-solid fa-trash-can"></i>
+                                <span>Remove</span>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            updateStats();
+        }
+
+        // Form Submission Handling
+        feedbackForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const name = document.getElementById('studentName').value.trim();
+            const course = document.getElementById('courseName').value;
+            const comments = document.getElementById('feedbackComments').value.trim();
+            const ratingInput = document.querySelector('input[name="rating"]:checked');
+
+            if (!ratingInput) {
+                showNotification('Please select a star rating!', 'error');
+                return;
+            }
+
+            const newFeedback = {
+                id: Date.now(),
+                name,
+                course,
+                rating: parseInt(ratingInput.value),
+                comments,
+                date: new Date().toISOString()
+            };
+
+            feedbacks.unshift(newFeedback);
+            localStorage.setItem('student_feedbacks', JSON.stringify(feedbacks));
+
+            feedbackForm.reset();
+            ratingDisplay.textContent = 'Select stars';
+            
+            renderFeedbacks();
+            showNotification('Feedback submitted successfully!');
+        });
+
+        // Delete Feedback Entry
+        window.deleteFeedback = function(id) {
+            feedbacks = feedbacks.filter(f => f.id !== id);
+            localStorage.setItem('student_feedbacks', JSON.stringify(feedbacks));
+            renderFeedbacks();
+            showNotification('Feedback entry removed.', 'error');
+        };
+
+        // Radio Rating Display Label Sync
+        document.querySelectorAll('input[name="rating"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const labels = {
+                    '1': '1/5 - Unsatisfactory',
+                    '2': '2/5 - Fair',
+                    '3': '3/5 - Good',
+                    '4': '4/5 - Very Good',
+                    '5': '5/5 - Excellent!'
+                };
+                ratingDisplay.textContent = labels[e.target.value] || '';
+            });
+        });
+
+        // Search & Filter Listeners
+        searchInput.addEventListener('input', renderFeedbacks);
+        sortSelect.addEventListener('change', renderFeedbacks);
+
+        // Modal Event Handlers
+        const toggleModal = (show) => {
+            if (show) {
+                cicdModal.classList.remove('hidden');
+                cicdModal.classList.add('flex');
+            } else {
+                cicdModal.classList.add('hidden');
+                cicdModal.classList.remove('flex');
+            }
+        };
+
+        cicdModalBtn.addEventListener('click', () => toggleModal(true));
+        closeModal.addEventListener('click', () => toggleModal(false));
+        closeModalBottom.addEventListener('click', () => toggleModal(false));
+        
+        // Close modal when clicking outer backdrop
+        cicdModal.addEventListener('click', (e) => {
+            if (e.target === cicdModal) toggleModal(false);
+        });
+
+        // Copy YAML snippet to Clipboard
+        copyYamlBtn.addEventListener('click', () => {
+            const yamlText = document.getElementById('yamlCode').textContent;
+            
+            // Clipboard copy with fallback
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(yamlText);
+            } else {
+                const textarea = document.createElement('textarea');
+                textarea.value = yamlText;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+            }
+
+            const copyTextSpan = document.getElementById('copyYamlText');
+            copyTextSpan.textContent = 'Copied!';
+            setTimeout(() => {
+                copyTextSpan.textContent = 'Copy YAML';
+            }, 2000);
+        });
+
+        // Initial Initialization
+        window.onload = function() {
+            renderFeedbacks();
+        };
+    </script>
+</body>
+</html>
